@@ -1,0 +1,68 @@
+name: Build and Release Node.js Project
+
+on:
+  workflow_dispatch:
+
+jobs:
+  package-and-release:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20' 
+
+    - name: Extract package information
+      id: pkg_info
+      run: |
+        echo "::set-output name=version::$(jq -r .version package.json)"
+        echo "::set-output name=name::$(jq -r .name package.json)"
+      shell: bash
+
+    - name: Install Dependencies
+      run: npm install
+
+    - name: Build Executable for ARMv7 (32-bit)
+      run: |
+        npm install -g pkg
+        pkg -t node20-linux-armv7 . --output ./build/${{ steps.pkg_info.outputs.name }}-armv7
+
+    - name: Build Executable for ARM64 (64-bit)
+      run: |
+        npm install -g pkg
+        pkg -t node20-linux-arm64 . --output ./build/${{ steps.pkg_info.outputs.name }}-arm64
+
+    - name: Create GitHub Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ steps.pkg_info.outputs.version }}
+        release_name: ${{ steps.pkg_info.outputs.name }} ${{ steps.pkg_info.outputs.version }}
+        draft: false
+        prerelease: false
+
+    - name: Upload ARMv7 Executable
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./build/${{ steps.pkg_info.outputs.name }}-armv7
+        asset_name: ${{ steps.pkg_info.outputs.name }}-armv7
+        asset_content_type: application/octet-stream
+
+    - name: Upload ARM64 Executable
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./build/${{ steps.pkg_info.outputs.name }}-arm64
+        asset_name: ${{ steps.pkg_info.outputs.name }}-arm64
+        asset_content_type: application/octet-stream
