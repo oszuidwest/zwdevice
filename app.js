@@ -1,39 +1,41 @@
-const express = require('express');
-const osUtils = require('os-utils');
-const diskusage = require('diskusage');
-const os = require('os');
-const app = express();
-const port = 3000;
+const express = require('express')
+const osUtils = require('os-utils')
+const diskusage = require('diskusage')
+const os = require('os')
+const app = express()
+const port = 3000
 
 // Helper function to get disk usage information
 const getDiskUsage = async () => {
-    try {
-        const path = os.platform() === 'win32' ? 'c:' : '/';
-        const usage = await diskusage.check(path);
-        return usage;
-    } catch (err) {
-        console.error('Error getting disk usage: ', err);
-        return { total: 0, free: 0, used: 0 }; // Fallback to prevent crash
-    }
-};
+  try {
+    const path = os.platform() === 'win32' ? 'c:' : '/'
+    const usage = await diskusage.check(path)
+    return usage
+  } catch (err) {
+    console.error('Error getting disk usage: ', err)
+    // Returning fallback values to prevent the application from crashing
+    return { total: 0, free: 0, used: 0 }
+  }
+}
 
 app.get('/', async (req, res) => {
-    const cpuUsagePromise = new Promise((resolve) => osUtils.cpuUsage(resolve));
-    const cpuUsage = await cpuUsagePromise;
-    const freeMemPercentage = osUtils.freememPercentage();
-    const totalMem = osUtils.totalmem();
-    const uptimeSeconds = osUtils.sysUptime();
-    const days = Math.floor(uptimeSeconds / (3600*24));
-    const hours = Math.floor((uptimeSeconds % (3600*24)) / 3600);
-    const minutes = Math.floor((uptimeSeconds % 3600) / 60);
-    const formattedUptime = `${days} days, ${hours} hours, ${minutes} minutes`;
-    const diskUsage = await getDiskUsage();
-    const hostname = os.hostname();
-    const cpus = os.cpus();
-    const networkInterfaces = os.networkInterfaces();
-    const diskUsagePercentage = ((diskUsage.used / diskUsage.total) * 100).toFixed(2);
+  const cpuUsagePromise = new Promise((resolve) => osUtils.cpuUsage(resolve))
+  const cpuUsage = await cpuUsagePromise
+  const freeMemPercentage = osUtils.freememPercentage()
+  const totalMem = osUtils.totalmem()
+  const uptimeSeconds = osUtils.sysUptime()
+  const days = Math.floor(uptimeSeconds / (3600 * 24))
+  const hours = Math.floor((uptimeSeconds % (3600 * 24)) / 3600)
+  const minutes = Math.floor((uptimeSeconds % 3600) / 60)
+  const formattedUptime = `${days} days, ${hours} hours, ${minutes} minutes`
+  const diskUsage = await getDiskUsage()
+  const usedDiskSpace = diskUsage.total - diskUsage.free
+  const diskUsagePercentage = ((usedDiskSpace / diskUsage.total) * 100).toFixed(2)
+  const hostname = os.hostname()
+  const cpus = os.cpus()
+  const networkInterfaces = os.networkInterfaces()
 
-    let cpuDetailsHtml = cpus.map((cpu, index) => `
+  const cpuDetailsHtml = cpus.map((cpu, index) => `
         <div class="col-sm-6 col-md-4 mb-3">
             <div class="card h-100">
                 <div class="card-body">
@@ -42,10 +44,10 @@ app.get('/', async (req, res) => {
                 </div>
             </div>
         </div>
-    `).join('');
+    `).join('')
 
-    let networkInfoHtml = Object.keys(networkInterfaces).map((iface) => {
-        return networkInterfaces[iface].map((info) => `
+  const networkInfoHtml = Object.keys(networkInterfaces).map((iface) => {
+    return networkInterfaces[iface].map((info) => `
             <tr>
                 <td>${iface}</td>
                 <td>${info.family}</td>
@@ -54,17 +56,17 @@ app.get('/', async (req, res) => {
                 <td>${info.mac}</td>
                 <td>${info.internal ? 'Yes' : 'No'}</td>
             </tr>
-        `).join('');
-    }).join('');
+        `).join('')
+  }).join('')
 
-    res.send(`
+  res.send(`
         <!DOCTYPE html>
         <html lang="en">
         <head>
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <title>System Information - ${hostname}</title>
-            <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.6.2/css/bootstrap.min.css" rel="stylesheet">
+            <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css" integrity="sha384-xOolHFLEh07PJGoPkLv1IbcEPTNtaed2xpHsD9ESMhqIYd0nLMwNLD69Npy4HI+N" crossorigin="anonymous">
         </head>
         <body>
             <div class="container">
@@ -82,9 +84,9 @@ app.get('/', async (req, res) => {
                     </div>
                     <p><strong>Total Memory:</strong> ${totalMem}MB</p>
                     <p><strong>System Uptime:</strong> ${formattedUptime}</p>
-                    <p><strong>Disk Usage:</strong> ${diskUsagePercentage}%</p>
+                    <p><strong>Disk Usage:</strong> ${diskUsagePercentage}% used</p>
                     <div class="progress mb-3">
-                        <div class="progress-bar bg-info" role="progressbar" style="width: ${diskUsagePercentage}%" aria-valuenow="${diskUsagePercentage}" aria-valuemin="0" aria-valuemax="100"></div>
+                        <div class="progress-bar bg-warning" role="progressbar" style="width: ${diskUsagePercentage}%" aria-valuenow="${diskUsagePercentage}" aria-valuemin="0" aria-valuemax="100"></div>
                     </div>
                 </div>
                 <h2 class="mt-4">Network Interfaces</h2>
@@ -106,9 +108,9 @@ app.get('/', async (req, res) => {
             </div>
         </body>
         </html>
-    `);
-});
+    `)
+})
 
 app.listen(port, () => {
-    console.log(`Server running at http://localhost:${port}`);
-});
+  console.log(`Server running at http://localhost:${port}`)
+})
