@@ -19,8 +19,14 @@ jobs:
     - name: Extract package information
       id: pkg_info
       run: |
-        echo "::set-output name=version::$(jq -r .version package.json)"
-        echo "::set-output name=name::$(jq -r .name package.json)"
+        echo "version=$(jq -r .version package.json)" >> $GITHUB_ENV
+        echo "name=$(jq -r .name package.json)" >> $GITHUB_ENV
+      shell: bash
+
+    - name: Extract version from package.json
+      id: extract_version
+      run: |
+        echo "version=$(jq -r .version package.json)" >> $GITHUB_OUTPUT
       shell: bash
 
     - name: Install Dependencies
@@ -29,21 +35,20 @@ jobs:
     - name: Build Executable for ARMv7 (32-bit)
       run: |
         npm install -g pkg
-        pkg -t node20-linux-armv7 . --output ./build/${{ steps.pkg_info.outputs.name }}-armv7
+        pkg -t node14-linux-armv7 . --output ./build/${{ steps.pkg_info.outputs.name }}-armv7
 
     - name: Build Executable for ARM64 (64-bit)
       run: |
         npm install -g pkg
-        pkg -t node20-linux-arm64 . --output ./build/${{ steps.pkg_info.outputs.name }}-arm64
+        pkg -t node14-linux-arm64 . --output ./build/${{ steps.pkg_info.outputs.name }}-arm64
 
     - name: Create GitHub Release
-      id: create_release
       uses: actions/create-release@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        tag_name: ${{ steps.pkg_info.outputs.version }}
-        release_name: ${{ steps.pkg_info.outputs.name }} ${{ steps.pkg_info.outputs.version }}
+        tag_name: ${{ env.version }}
+        release_name: Release ${{ env.version }}
         draft: false
         prerelease: false
 
